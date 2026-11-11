@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cache Memory — Simulator & Game</title>
+<style>
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    background:#0f1626;color:#eef1f7;padding:20px}
+  .box{max-width:560px;text-align:center}
+  h1{font-size:34px;margin:0 0 10px}
+  .sub{color:#93a0bd;margin-bottom:8px}
+  .meta{color:#93a0bd;font-size:14px;margin-bottom:36px}
+  .cards{display:grid;gap:16px;grid-template-columns:1fr 1fr}
+  @media(max-width:500px){.cards{grid-template-columns:1fr}}
+  a.card{display:block;padding:24px 20px;background:#121a2c;border:1px solid #263150;
+    border-radius:12px;color:#eef1f7;text-decoration:none;transition:border-color .15s}
+  a.card:hover{border-color:#35d6c8}
+  a.card b{display:block;font-size:18px;margin-bottom:6px}
+  a.card span{color:#93a0bd;font-size:13.5px;line-height:1.5}
+  .foot{margin-top:28px;font-size:13px;color:#93a0bd}
+  .foot a{color:#35d6c8}
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>Cache Memory</h1>
+  <div class="sub">Simulator &amp; Game</div>
+  <div class="meta">ECE2002 · Gopisetty Karthik · 25BCA7275</div>
+  <div class="cards">
+    <a class="card" href="./simulator/">
+      <b>Simulator →</b>
+      <span>Configure cache geometry and watch every hit, miss and eviction.</span>
+    </a>
+    <a class="card" href="./cache-commander/">
+      <b>Cache Commander →</b>
+      <span>A grid-based game where you carry blocks into cache slots.</span>
+    </a>
+  </div>
+  <div class="foot">
+    Code and report on <a href="https://github.com/gopisettykarthik/cache_sim">GitHub</a>.
+  </div>
+</div>
+</body>
+</html>
