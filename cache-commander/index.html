@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cache Commander</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="wrap">
+
+    <header>
+      <div class="kicker">ECE2002 · cache mapping trainer</div>
+      <h1>Cache Commander</h1>
+      <p class="lede">Walk your unit through the memory bay, pick up a block, and carry it to the cache rack. Each mapping policy enforces a different rule for where a block is allowed to land.</p>
+    </header>
+
+    <div class="control-row">
+      <select id="policySelect" aria-label="Mapping policy">
+        <option value="direct">Direct-Mapped</option>
+        <option value="full">Fully Associative</option>
+        <option value="set2">2-Way Set-Associative</option>
+      </select>
+      <button id="resetBtn">Reset round</button>
+      <button id="themeBtn">Toggle theme</button>
+      <label class="hint-toggle">
+        <input type="checkbox" id="hintToggle" checked> Highlight legal slots
+      </label>
+    </div>
+
+    <div class="rule" id="ruleText"></div>
+
+    <!-- Cache rack: slot number + the block currently inside -->
+    <section class="panel rack-panel">
+      <div class="panel-title">Cache rack</div>
+      <div class="rack" id="rack"></div>
+    </section>
+
+    <div id="fieldOuter">
+      <div id="gridWrap">
+        <div id="field"></div>
+        <div id="overlay"></div>
+      </div>
+    </div>
+
+    <div class="touch">
+      <button class="tc-up" data-dir="up" aria-label="Up">▲</button>
+      <button class="tc-left" data-dir="left" aria-label="Left">◀</button>
+      <button class="tc-act" id="actBtn" aria-label="Pick up or place">●</button>
+      <button class="tc-right" data-dir="right" aria-label="Right">▶</button>
+      <button class="tc-down" data-dir="down" aria-label="Down">▼</button>
+    </div>
+
+    <div class="panel">
+      <div class="stats-row">
+        <span>score <b id="statScore">0</b></span>
+        <span>placed <b id="statPlaced">0</b></span>
+        <span>evictions <b id="statEvict">0</b></span>
+        <span>wrong slots <b id="statWrong">0</b></span>
+        <span>carrying <b id="statCarry">none</b></span>
+      </div>
+      <div id="log"></div>
+    </div>
+
+    <details>
+      <summary>What the three policies mean</summary>
+      <p><b>Direct-Mapped</b> — each block has exactly one legal slot, given by (block address) mod (number of slots). Simple and fast, but two blocks that share a slot keep evicting each other.</p>
+      <p><b>Fully Associative</b> — a block can land in any slot. You decide which occupant gets evicted once the rack is full, so you act as the replacement policy.</p>
+      <p><b>2-Way Set-Associative</b> — slots are paired into sets. A block maps to one set, by address mod number of sets, but either slot in that set will accept it. A middle ground between the other two schemes.</p>
+    </details>
+
+    <footer>move: arrows / WASD &nbsp;·&nbsp; pick up / place: space or E &nbsp;·&nbsp; reset: R</footer>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

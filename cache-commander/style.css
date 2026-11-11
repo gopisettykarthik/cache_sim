@@ -1,0 +1,188 @@
+:root{
+  --bg1:#eef1f7; --bg2:#dde3ee;
+  --panel:#ffffff; --panel-line:#d6dce8;
+  --floor:#eef1f7; --floor-line:#cfd7e6;
+  --wall:#aeb6c6; --wall-line:#8d97ac;
+  --slot:#fff4dd; --slot-line:#d99a3c; --slot-fill:#ffdf9e;
+  --text:#161c2b; --text-dim:#5b6479;
+  --accent:#0f7a73; --accent-ink:#ffffff;
+  --player:#e8623f;
+  --good:#1f9d5c; --bad:#d8503f;
+  --mono:'JetBrains Mono','Space Mono',ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,Roboto,Helvetica,Arial,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg1:#0a0e18; --bg2:#0f1626;
+    --panel:#121a2c; --panel-line:#263150;
+    --floor:#141d31; --floor-line:#263150;
+    --wall:#060910; --wall-line:#1b2335;
+    --slot:#241d0c; --slot-line:#d99a3c; --slot-fill:#4a3a14;
+    --text:#eef1f7; --text-dim:#93a0bd;
+    --accent:#35d6c8; --accent-ink:#05130f;
+    --player:#ff8a5c;
+    --good:#35d07f; --bad:#ff6b61;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg1:#0a0e18; --bg2:#0f1626;
+  --panel:#121a2c; --panel-line:#263150;
+  --floor:#141d31; --floor-line:#263150;
+  --wall:#060910; --wall-line:#1b2335;
+  --slot:#241d0c; --slot-line:#d99a3c; --slot-fill:#4a3a14;
+  --text:#eef1f7; --text-dim:#93a0bd;
+  --accent:#35d6c8; --accent-ink:#05130f;
+  --player:#ff8a5c;
+  --good:#35d07f; --bad:#ff6b61;
+  color-scheme:dark;
+}
+
+*{ box-sizing:border-box; }
+html,body{ margin:0; padding:0; }
+body{
+  background:radial-gradient(1200px 500px at 50% -10%, var(--bg2), transparent), var(--bg1);
+  color:var(--text);
+  font-family:var(--sans);
+  min-height:100vh;
+  display:flex;
+  justify-content:center;
+  padding:28px 14px 40px;
+}
+.wrap{ width:100%; max-width:720px; }
+
+header{ margin-bottom:18px; }
+.kicker{ font-family:var(--mono); font-size:12.5px; letter-spacing:.04em; color:var(--accent); }
+h1{ font-family:var(--mono); font-size:clamp(26px,6vw,36px); margin:4px 0 6px; letter-spacing:-0.01em; }
+.lede{ color:var(--text-dim); font-size:14.5px; line-height:1.5; max-width:56ch; margin:0; }
+
+.panel{
+  background:var(--panel);
+  border:1px solid var(--panel-line);
+  border-radius:10px;
+  padding:14px 16px;
+}
+.panel-title{ font-family:var(--mono); font-size:13px; color:var(--text-dim); margin-bottom:10px; }
+
+.control-row{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin:16px 0 10px; }
+select, button{
+  font-family:var(--sans); font-size:14px; padding:8px 12px; border-radius:7px;
+  border:1px solid var(--panel-line); background:var(--panel); color:var(--text); cursor:pointer;
+}
+button:hover, select:hover{ border-color:var(--accent); }
+button:focus-visible, select:focus-visible, input:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+.hint-toggle{ font-size:13.5px; color:var(--text-dim); display:flex; align-items:center; gap:6px; cursor:pointer; }
+
+.rule{
+  font-family:var(--mono); font-size:13px; line-height:1.5; color:var(--text);
+  background:var(--slot); border:1px solid var(--slot-line); border-radius:8px;
+  padding:10px 12px; margin-bottom:14px;
+}
+
+/* ---------- cache rack ---------- */
+.rack-panel{ margin-bottom:14px; }
+.rack{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+.slot-card{
+  border:2px solid var(--slot-line);
+  background:var(--slot);
+  border-radius:9px;
+  padding:8px 6px 9px;
+  text-align:center;
+  min-width:0;
+  transition:box-shadow .15s ease, border-color .15s ease, transform .15s ease;
+}
+.slot-card .sc-name{ font-family:var(--mono); font-weight:700; font-size:14px; }
+.slot-card .sc-rule{ font-family:var(--mono); font-size:10.5px; color:var(--text-dim); margin:2px 0 7px; min-height:14px; }
+.slot-card .sc-block{
+  height:34px; border-radius:7px; display:flex; align-items:center; justify-content:center;
+  font-family:var(--mono); font-weight:700; font-size:13px;
+}
+.slot-card .sc-block.empty{ border:1.5px dashed var(--slot-line); color:var(--text-dim); font-weight:400; }
+.slot-card .sc-block.full{ color:#12100a; box-shadow:0 2px 6px rgba(0,0,0,.25); }
+.slot-card.valid{ box-shadow:0 0 0 3px var(--good); }
+.slot-card.here{ border-color:var(--accent); transform:translateY(-2px); }
+
+/* ---------- field ---------- */
+#fieldOuter{ display:flex; justify-content:center; margin-bottom:14px; }
+#gridWrap{
+  position:relative; border-radius:10px; border:1px solid var(--panel-line);
+  box-shadow:0 0 0 1px var(--panel-line), 0 10px 30px -14px rgba(0,0,0,.35);
+  overflow:hidden; background:var(--floor);
+}
+#field{ position:relative; }
+.tile{ position:absolute; border:1px solid var(--floor-line); }
+.tile.floor{ background:var(--floor); }
+.tile.wall{ background:var(--wall); border-color:var(--wall-line); }
+.tile.slot{ background:var(--slot); border-color:var(--slot-line); border-width:2px; }
+.tile.slot.valid{ box-shadow:inset 0 0 0 2px var(--good); }
+
+.slot-label{
+  position:absolute; top:1px; left:0; right:0; text-align:center;
+  font-family:var(--mono); font-weight:700; color:var(--text); pointer-events:none; line-height:1;
+}
+.slot-chip{
+  position:absolute; left:14%; right:14%; bottom:3px; height:52%;
+  border-radius:5px; display:flex; align-items:center; justify-content:center;
+  font-family:var(--mono); font-weight:700; color:#12100a;
+}
+
+#overlay{ position:absolute; inset:0; pointer-events:none; }
+.ov{ position:absolute; display:flex; align-items:center; justify-content:center; }
+.block-item{
+  width:76%; height:76%; border-radius:7px; display:flex; align-items:center; justify-content:center;
+  font-family:var(--mono); font-weight:700; color:#0e0e10; box-shadow:0 2px 6px rgba(0,0,0,.25);
+}
+#player{ transition:left .11s linear, top .11s linear; z-index:5; }
+#player .face{
+  width:80%; height:80%; border-radius:50%; background:var(--player);
+  display:flex; align-items:center; justify-content:center; box-shadow:0 3px 8px rgba(0,0,0,.3);
+}
+#carryBadge{
+  position:absolute; top:-14px; left:50%; transform:translateX(-50%);
+  font-family:var(--mono); font-size:11px; font-weight:700; padding:1px 5px; border-radius:5px;
+  background:var(--accent); color:var(--accent-ink); white-space:nowrap; display:none;
+}
+
+.shake{ animation:shakeKey .3s ease; }
+@keyframes shakeKey{
+  0%,100%{ transform:translateX(0); }
+  20%{ transform:translateX(-4px); } 40%{ transform:translateX(4px); }
+  60%{ transform:translateX(-3px); } 80%{ transform:translateX(3px); }
+}
+.pop{ animation:popKey .25s ease; }
+@keyframes popKey{ 0%{ transform:scale(.88); } 100%{ transform:scale(1); } }
+@media (prefers-reduced-motion: reduce){
+  .shake,.pop{ animation:none; }
+  #player{ transition:none; }
+}
+
+/* ---------- stats / log ---------- */
+.stats-row{ display:flex; gap:8px 18px; flex-wrap:wrap; font-family:var(--mono); font-size:13px; color:var(--text-dim); margin-bottom:10px; }
+.stats-row b{ color:var(--text); }
+#log{ font-family:var(--mono); font-size:12.5px; line-height:1.7; max-height:120px; overflow-y:auto; color:var(--text-dim); }
+#log div:first-child{ color:var(--text); }
+
+/* ---------- touch pad ---------- */
+.touch{
+  display:grid; grid-template-columns:repeat(3,48px); grid-template-rows:repeat(3,48px);
+  gap:6px; justify-content:center; margin:6px auto 16px;
+}
+.touch button{ width:48px; height:48px; padding:0; font-size:16px; display:flex; align-items:center; justify-content:center; }
+.tc-up{ grid-column:2; grid-row:1; }
+.tc-left{ grid-column:1; grid-row:2; }
+.tc-act{ grid-column:2; grid-row:2; background:var(--accent); border-color:var(--accent); color:var(--accent-ink); font-weight:700; }
+.tc-right{ grid-column:3; grid-row:2; }
+.tc-down{ grid-column:2; grid-row:3; }
+
+details{ margin-top:18px; font-size:13.5px; color:var(--text-dim); }
+summary{ cursor:pointer; color:var(--text); font-weight:600; margin-bottom:6px; }
+details p{ margin:8px 0; line-height:1.55; }
+details b{ color:var(--text); }
+
+footer{ margin-top:18px; font-family:var(--mono); font-size:12px; color:var(--text-dim); text-align:center; }
+
+@media (max-width:520px){
+  .slot-card .sc-rule{ font-size:9.5px; }
+  .slot-card .sc-name{ font-size:12.5px; }
+}

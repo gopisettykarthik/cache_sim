@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cache Memory Simulator — ECE2002</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --paper:#FAF9F5; --panel:#FFFFFF; --ink:#19233B; --ink-dim:#5A6478;
+  --line:#CBD1DC; --line-soft:#E4E8EF;
+  --blue:#2456A6; --blue-ink:#1B3E78; --blue-soft:#E7EDF8;
+  --tag-c:#2456A6; --tag-bg:#E3EAF7;
+  --idx-c:#A05E14; --idx-bg:#F7EAD8;
+  --off-c:#1F7A6B; --off-bg:#DFF0EC;
+  --hit:#1E7A46; --hit-bg:#E0F1E6;
+  --miss:#B03A2E; --miss-bg:#F8E5E1;
+  --flash:#FFF3C9;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --paper:#111826; --panel:#192232; --ink:#E7EBF3; --ink-dim:#9AA5BC;
+    --line:#32405C; --line-soft:#243049;
+    --blue:#82A9E9; --blue-ink:#A9C4F2; --blue-soft:#1C2A45;
+    --tag-c:#8FB2EC; --tag-bg:#1D2C4A;
+    --idx-c:#E2A75B; --idx-bg:#3A2B14;
+    --off-c:#5EC7B2; --off-bg:#143430;
+    --hit:#5FCE8E; --hit-bg:#153122;
+    --miss:#E8796C; --miss-bg:#3C1C17;
+    --flash:#3A3417;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --paper:#111826; --panel:#192232; --ink:#E7EBF3; --ink-dim:#9AA5BC;
+  --line:#32405C; --line-soft:#243049;
+  --blue:#82A9E9; --blue-ink:#A9C4F2; --blue-soft:#1C2A45;
+  --tag-c:#8FB2EC; --tag-bg:#1D2C4A;
+  --idx-c:#E2A75B; --idx-bg:#3A2B14;
+  --off-c:#5EC7B2; --off-bg:#143430;
+  --hit:#5FCE8E; --hit-bg:#153122;
+  --miss:#E8796C; --miss-bg:#3C1C17;
+  --flash:#3A3417;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+*,*::before,*::after{box-sizing:inherit}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:15px; line-height:1.5;
+}
+.mono{font-family:"IBM Plex Mono","SFMono-Regular",Consolas,monospace}
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px 64px}
+
+/* ---------- header: datasheet title block ---------- */
+header{border-bottom:3px double var(--line);margin-bottom:0}
+.title-block{
+  max-width:1180px;margin:0 auto;padding:26px 20px 18px;
+  display:flex;flex-wrap:wrap;gap:8px 24px;align-items:baseline;justify-content:space-between;
+}
+.part-no{font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--ink-dim);letter-spacing:.04em}
+h1{font-size:clamp(26px,4.5vw,38px);font-weight:700;margin:2px 0 0;letter-spacing:-.01em}
+.subtitle{color:var(--ink-dim);font-size:14.5px;margin-top:2px;max-width:62ch}
+.hdr-right{display:flex;align-items:center;gap:10px}
+
+/* ---------- tabs ---------- */
+.tabs{max-width:1180px;margin:0 auto;padding:0 20px;display:flex;gap:4px;border-bottom:1px solid var(--line)}
+.tab{
+  appearance:none;border:1px solid var(--line);border-bottom:none;background:var(--paper);
+  color:var(--ink-dim);font:inherit;font-weight:600;font-size:14px;
+  padding:9px 18px;border-radius:8px 8px 0 0;cursor:pointer;position:relative;top:1px;
+}
+.tab[aria-selected="true"]{background:var(--panel);color:var(--ink);border-bottom:1px solid var(--panel)}
+.tab:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+
+/* ---------- layout ---------- */
+.sim-grid{display:grid;grid-template-columns:272px 1fr;gap:22px;margin-top:22px}
+@media(max-width:860px){.sim-grid{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 16px 18px}
+.panel h2{font-size:13px;font-weight:600;color:var(--ink-dim);margin:0 0 12px;letter-spacing:.02em;border-bottom:1px solid var(--line-soft);padding-bottom:8px}
+fieldset{border:none;margin:0 0 14px;padding:0}
+fieldset legend{font-size:13px;font-weight:600;margin-bottom:6px;padding:0}
+label{display:block;font-size:13px;margin-bottom:4px;color:var(--ink-dim)}
+select,input[type="text"]{
+  width:100%;font:inherit;font-size:14px;color:var(--ink);background:var(--paper);
+  border:1px solid var(--line);border-radius:6px;padding:7px 9px;
+}
+select:focus-visible,input:focus-visible,button:focus-visible{outline:2px solid var(--blue);outline-offset:1px}
+.cfg-note{font-size:12.5px;color:var(--ink-dim);margin-top:10px;border-top:1px dashed var(--line-soft);padding-top:10px}
+.cfg-note b{color:var(--ink)}
+.derived{font-family:"IBM Plex Mono",monospace;font-size:12.5px;line-height:1.75}
+.derived span{display:inline-block;min-width:1.4em}
+
+/* ---------- buttons ---------- */
+button.btn{
+  appearance:none;font:inherit;font-weight:600;font-size:14px;cursor:pointer;
+  border-radius:7px;padding:8px 14px;border:1px solid var(--blue);
+  background:var(--blue);color:#fff;transition:filter .12s;
+}
+:root[data-theme="dark"] button.btn, html body button.btn.dark-fix{color:#fff}
+button.btn:hover{filter:brightness(1.08)}
+button.btn.ghost{background:var(--panel);color:var(--blue);border-color:var(--blue)}
+button.btn.quiet{background:var(--panel);color:var(--ink);border-color:var(--line)}
+button.btn:disabled{opacity:.45;cursor:not-allowed}
+.icon-btn{appearance:none;border:1px solid var(--line);background:var(--panel);color:var(--ink);
+  border-radius:7px;font:inherit;font-size:13px;padding:6px 10px;cursor:pointer}
+
+/* ---------- access bar ---------- */
+.access-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+.access-bar .field{flex:0 0 auto}
+.access-bar input[type="text"]{width:110px;font-family:"IBM Plex Mono",monospace}
+.access-bar select{width:auto}
+.spacer{flex:1}
+.speed{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-dim)}
+.speed input{accent-color:var(--blue)}
+
+/* ---------- decode strip (hero) ---------- */
+.decode{margin-top:18px;border:1px solid var(--line);border-radius:10px;background:var(--panel);padding:18px;overflow-x:auto}
+.decode-top{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:baseline;margin-bottom:12px}
+.decode-top .addr{font-family:"IBM Plex Mono",monospace;font-size:17px;font-weight:600}
+.decode-top .meaning{font-size:13px;color:var(--ink-dim)}
+.bits{display:flex;gap:0;width:max-content}
+.bit{
+  font-family:"IBM Plex Mono",monospace;font-size:clamp(18px,3.2vw,26px);font-weight:600;
+  width:clamp(34px,6vw,46px);height:clamp(44px,7vw,56px);
+  display:flex;align-items:center;justify-content:center;
+  border:1px solid var(--line);margin-left:-1px;background:var(--paper);
+  transition:background .25s,color .25s,border-color .25s;
+}
+.bit.tag{background:var(--tag-bg);color:var(--tag-c);border-color:var(--tag-c)}
+.bit.idx{background:var(--idx-bg);color:var(--idx-c);border-color:var(--idx-c)}
+.bit.off{background:var(--off-bg);color:var(--off-c);border-color:var(--off-c)}
+.legend{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:12px;font-size:13.5px}
+.legend .chip{display:inline-flex;align-items:center;gap:7px}
+.swatch{width:13px;height:13px;border-radius:3px;display:inline-block}
+.legend .val{font-family:"IBM Plex Mono",monospace;font-weight:600}
+.result{
+  margin-top:14px;border-radius:8px;padding:10px 14px;font-weight:600;font-size:15px;
+  border:1px solid var(--line);background:var(--paper);color:var(--ink-dim);
+  transition:background .25s,color .25s,border-color .25s;
+}
+.result.hit{background:var(--hit-bg);border-color:var(--hit);color:var(--hit)}
+.result.miss{background:var(--miss-bg);border-color:var(--miss);color:var(--miss)}
+.result .sub{display:block;font-weight:400;font-size:13px;margin-top:2px}
+
+/* ---------- cache table ---------- */
+.table-wrap{margin-top:18px;border:1px solid var(--line);border-radius:10px;background:var(--panel);overflow:hidden}
+.table-head{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line-soft)}
+.table-head h2{margin:0;font-size:14px;font-weight:600}
+.table-scroll{overflow-x:auto}
+table.cache{border-collapse:collapse;width:100%;font-size:13.5px}
+table.cache th,table.cache td{padding:6px 12px;border-bottom:1px solid var(--line-soft);text-align:left;white-space:nowrap}
+table.cache th{font-size:12px;font-weight:600;color:var(--ink-dim);background:var(--paper);position:sticky;top:0}
+table.cache td.setcell{font-family:"IBM Plex Mono",monospace;font-weight:600;border-right:1px solid var(--line-soft);background:var(--paper)}
+table.cache .mono-c{font-family:"IBM Plex Mono",monospace}
+tr.row-target{background:var(--blue-soft)}
+tr.row-hit{background:var(--hit-bg)}
+tr.row-miss{background:var(--miss-bg)}
+tr.row-fill{background:var(--flash)}
+td.empty{color:var(--ink-dim)}
+.vbit{display:inline-block;min-width:1.2em;text-align:center;font-weight:600}
+.vbit.v1{color:var(--hit)}
+.vbit.v0{color:var(--ink-dim)}
+
+/* ---------- stats ---------- */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-top:18px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.stat .num{font-family:"IBM Plex Mono",monospace;font-size:22px;font-weight:600}
+.stat .lbl{font-size:12.5px;color:var(--ink-dim);margin-top:2px}
+.stat.hitc .num{color:var(--hit)} .stat.missc .num{color:var(--miss)}
+
+/* ---------- log ---------- */
+.log-wrap{margin-top:18px;background:var(--panel);border:1px solid var(--line);border-radius:10px}
+.log-wrap h2{margin:0;padding:12px 16px;font-size:14px;border-bottom:1px solid var(--line-soft)}
+.log{list-style:none;margin:0;padding:6px 0;max-height:260px;overflow-y:auto;font-size:13px}
+.log li{padding:5px 16px;display:flex;flex-wrap:wrap;gap:6px 12px;align-items:baseline;border-bottom:1px dashed var(--line-soft)}
+.log li:last-child{border-bottom:none}
+.log .n{color:var(--ink-dim);font-family:"IBM Plex Mono",monospace;min-width:3ch}
+.log .a{font-family:"IBM Plex Mono",monospace;font-weight:600}
+.log .seg{font-family:"IBM Plex Mono",monospace}
+.log .seg .t{color:var(--tag-c)} .log .seg .i{color:var(--idx-c)} .log .seg .o{color:var(--off-c)}
+.log .res{font-weight:600}
+.log .res.h{color:var(--hit)} .log .res.m{color:var(--miss)}
+.log .ev{color:var(--ink-dim)}
+.log-empty{padding:14px 16px;color:var(--ink-dim);font-size:13.5px}
+
+/* ---------- concepts ---------- */
+.concepts{margin-top:22px;display:grid;gap:18px}
+.concept{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px 20px}
+.concept h2{margin:0 0 8px;font-size:18px}
+.concept h3{margin:16px 0 6px;font-size:15px}
+.concept p{margin:6px 0;max-width:74ch}
+.concept .fig{margin:12px 0 4px;overflow-x:auto}
+.formula{
+  font-family:"IBM Plex Mono",monospace;font-size:13.5px;background:var(--paper);
+  border:1px solid var(--line-soft);border-radius:8px;padding:12px 14px;line-height:1.9;overflow-x:auto;
+}
+.formula b{color:var(--blue-ink)}
+.map-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+.k-tag{color:var(--tag-c);font-weight:600} .k-idx{color:var(--idx-c);font-weight:600} .k-off{color:var(--off-c);font-weight:600}
+svg text{font-family:"IBM Plex Mono",monospace}
+.pol-list{margin:6px 0 0;padding-left:20px}
+.pol-list li{margin-bottom:6px;max-width:72ch}
+footer{margin-top:40px;color:var(--ink-dim);font-size:12.5px;border-top:1px solid var(--line-soft);padding-top:14px}
+@media (prefers-reduced-motion: reduce){
+  *{transition:none !important}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="title-block">
+    <div>
+      <div class="part-no mono">ECE2002 — Computer Organization and Architecture</div>
+      <h1>Cache Memory Simulator</h1>
+      <div class="subtitle">Direct mapped, set associative and fully associative mapping on an 8-bit address space (256 B main memory). Configure the cache, feed it addresses, and watch every hit, miss and eviction.</div>
+    </div>
+    <div class="hdr-right">
+      <button class="icon-btn" id="themeBtn" aria-label="Toggle color theme">◐ Theme</button>
+    </div>
+  </div>
+</header>
+
+<div class="tabs" role="tablist">
+  <button class="tab" id="tabSim" role="tab" aria-selected="true" aria-controls="viewSim">Simulator</button>
+  <button class="tab" id="tabCon" role="tab" aria-selected="false" aria-controls="viewCon">Concepts</button>
+</div>
+
+<main class="wrap">
+
+<!-- ================= SIMULATOR ================= -->
+<section id="viewSim" role="tabpanel" aria-labelledby="tabSim">
+  <div class="sim-grid">
+    <!-- config -->
+    <aside class="panel" aria-label="Cache configuration">
+      <h2>Cache configuration</h2>
+      <fieldset>
+        <label for="cfgSize">Cache size</label>
+        <select id="cfgSize">
+          <option value="32">32 bytes</option>
+          <option value="64" selected>64 bytes</option>
+          <option value="128">128 bytes</option>
+        </select>
+      </fieldset>
+      <fieldset>
+        <label for="cfgBlock">Block (line) size</label>
+        <select id="cfgBlock">
+          <option value="4">4 bytes</option>
+          <option value="8" selected>8 bytes</option>
+          <option value="16">16 bytes</option>
+        </select>
+      </fieldset>
+      <fieldset>
+        <label for="cfgMap">Mapping</label>
+        <select id="cfgMap">
+          <option value="1" selected>Direct mapped</option>
+          <option value="2">2-way set associative</option>
+          <option value="4">4-way set associative</option>
+          <option value="full">Fully associative</option>
+        </select>
+      </fieldset>
+      <fieldset>
+        <label for="cfgPol">Replacement policy</label>
+        <select id="cfgPol">
+          <option value="LRU" selected>LRU (least recently used)</option>
+          <option value="FIFO">FIFO (first in, first out)</option>
+          <option value="RAND">Random</option>
+        </select>
+      </fieldset>
+      <button class="btn ghost" id="btnReset" style="width:100%">Reset cache</button>
+      <div class="cfg-note">
+        <div class="derived" id="derived"></div>
+      </div>
+    </aside>
+
+    <!-- sim area -->
+    <div>
+      <div class="panel">
+        <div class="access-bar">
+          <div class="field">
+            <label for="addrIn">Address</label>
+            <input type="text" id="addrIn" value="0x2C" spellcheck="false" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="addrBase">Base</label>
+            <select id="addrBase">
+              <option value="16" selected>Hex</option>
+              <option value="10">Decimal</option>
+            </select>
+          </div>
+          <button class="btn" id="btnAccess">Access address</button>
+          <button class="btn quiet" id="btnRandom">Random</button>
+          <div class="field">
+            <label for="presetSel">Demo sequence</label>
+            <select id="presetSel">
+              <option value="">Choose…</option>
+              <option value="seq">Sequential sweep (spatial locality)</option>
+              <option value="loop">Loop ×2 (temporal locality)</option>
+              <option value="thrash">Conflict thrash</option>
+            </select>
+          </div>
+          <button class="btn quiet" id="btnRunPreset">Run</button>
+          <div class="spacer"></div>
+          <div class="speed">
+            <label for="speedIn" style="margin:0">Speed</label>
+            <input type="range" id="speedIn" min="120" max="1200" step="20" value="650">
+          </div>
+        </div>
+      </div>
+
+      <!-- decode strip -->
+      <div class="decode" aria-live="polite">
+        <div class="decode-top">
+          <span class="addr" id="decAddr">—</span>
+          <span class="meaning" id="decMeaning">Enter an address and press “Access address” to see it decoded.</span>
+        </div>
+        <div class="bits" id="bitRow"></div>
+        <div class="legend" id="legend"></div>
+        <div class="result" id="resultBox">Waiting for first access…</div>
+      </div>
+
+      <!-- cache table -->
+      <div class="table-wrap">
+        <div class="table-head">
+          <h2>Cache contents</h2>
+          <span class="mono" style="font-size:12px;color:var(--ink-dim)" id="tblMeta"></span>
+        </div>
+        <div class="table-scroll">
+          <table class="cache" id="cacheTbl"></table>
+        </div>
+      </div>
+
+      <!-- stats -->
+      <div class="stats" id="stats"></div>
+
+      <!-- log -->
+      <div class="log-wrap">
+        <h2>Access log</h2>
+        <ul class="log" id="log"><li class="log-empty">No accesses yet.</li></ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= CONCEPTS ================= -->
+<section id="viewCon" role="tabpanel" aria-labelledby="tabCon" hidden>
+  <div class="concepts">
+
+    <div class="concept">
+      <h2>Why a cache?</h2>
+      <p>Main memory is big but slow; the CPU is fast but needs data now. A cache is a small, fast memory that keeps copies of recently used blocks so that most accesses are served in a few cycles instead of dozens. It works because programs show <strong>temporal locality</strong> (what you used recently, you’ll likely use again) and <strong>spatial locality</strong> (data near what you just used is likely next). A <strong>hit</strong> means the block is already in the cache; a <strong>miss</strong> means it must be fetched from main memory, and possibly evict an existing block to make room.</p>
+    </div>
+
+    <div class="concept">
+      <h2>How an address is split</h2>
+      <p>Every memory address is carved into three fields. From the right: the <span class="k-off">offset</span> selects a byte inside the block, the <span class="k-idx">index</span> selects which set of the cache to look in, and whatever remains is the <span class="k-tag">tag</span>, stored alongside the data so the cache can tell blocks apart.</p>
+      <div class="formula" id="formulaBox"></div>
+      <p id="formulaWorked" style="font-size:13.5px"></p>
+    </div>
+
+    <div class="concept">
+      <h2>The three mapping schemes</h2>
+      <div class="map-grid">
+        <div>
+          <h3>Direct mapped</h3>
+          <p>Each memory block can live in exactly <strong>one</strong> line: <span class="mono">line = block mod (number of lines)</span>. Cheapest to build and fastest to check, but two hot blocks that share a line keep kicking each other out — a <strong>conflict miss</strong>.</p>
+          <div class="fig">
+            <svg width="280" height="120" viewBox="0 0 280 120" role="img" aria-label="Direct mapped: one block maps to one line">
+              <rect x="10" y="20" width="60" height="80" fill="none" stroke="currentColor"/>
+              <text x="40" y="14" font-size="11" text-anchor="middle">memory</text>
+              <line x1="10" y1="40" x2="70" y2="40" stroke="currentColor"/>
+              <line x1="10" y1="60" x2="70" y2="60" stroke="currentColor"/>
+              <line x1="10" y1="80" x2="70" y2="80" stroke="currentColor"/>
+              <rect x="200" y="35" width="60" height="50" fill="none" stroke="currentColor"/>
+              <text x="230" y="29" font-size="11" text-anchor="middle">cache</text>
+              <line x1="200" y1="60" x2="260" y2="60" stroke="currentColor"/>
+              <path d="M70 30 C140 30 150 47 198 47" fill="none" stroke="#2456A6" stroke-width="2"/>
+              <path d="M70 90 C140 90 150 73 198 73" fill="none" stroke="#2456A6" stroke-width="2"/>
+            </svg>
+          </div>
+        </div>
+        <div>
+          <h3>Set associative</h3>
+          <p>The cache is grouped into <strong>sets</strong> of k lines (k-way). A block maps to one set but may sit in <strong>any way</strong> within it: <span class="mono">set = block mod (number of sets)</span>. On a miss with a full set, the replacement policy picks the victim. The sweet spot used by real CPUs.</p>
+          <div class="fig">
+            <svg width="280" height="120" viewBox="0 0 280 120" role="img" aria-label="Set associative: one block maps to one set of several ways">
+              <rect x="10" y="20" width="60" height="80" fill="none" stroke="currentColor"/>
+              <text x="40" y="14" font-size="11" text-anchor="middle">memory</text>
+              <line x1="10" y1="60" x2="70" y2="60" stroke="currentColor"/>
+              <rect x="200" y="25" width="60" height="34" fill="none" stroke="#A05E14" stroke-width="1.6"/>
+              <line x1="200" y1="42" x2="260" y2="42" stroke="currentColor"/>
+              <rect x="200" y="63" width="60" height="34" fill="none" stroke="currentColor"/>
+              <line x1="200" y1="80" x2="260" y2="80" stroke="currentColor"/>
+              <text x="230" y="112" font-size="11" text-anchor="middle">2 sets × 2 ways</text>
+              <path d="M70 40 C130 40 140 33 198 33" fill="none" stroke="#2456A6" stroke-width="2"/>
+              <path d="M70 40 C130 40 140 51 198 51" fill="none" stroke="#2456A6" stroke-width="2" stroke-dasharray="4 3"/>
+            </svg>
+          </div>
+        </div>
+        <div>
+          <h3>Fully associative</h3>
+          <p>A block may go in <strong>any</strong> line — there is only one set, so the index field disappears and the address is just <span class="k-tag">tag</span> + <span class="k-off">offset</span>. No conflict misses, but every line’s tag must be compared in parallel, which is expensive hardware. Used for small structures like TLBs.</p>
+          <div class="fig">
+            <svg width="280" height="120" viewBox="0 0 280 120" role="img" aria-label="Fully associative: a block can go to any line">
+              <rect x="10" y="20" width="60" height="80" fill="none" stroke="currentColor"/>
+              <text x="40" y="14" font-size="11" text-anchor="middle">memory</text>
+              <rect x="200" y="25" width="60" height="72" fill="none" stroke="currentColor"/>
+              <line x1="200" y1="49" x2="260" y2="49" stroke="currentColor"/>
+              <line x1="200" y1="73" x2="260" y2="73" stroke="currentColor"/>
+              <text x="230" y="112" font-size="11" text-anchor="middle">any line</text>
+              <path d="M70 40 C130 36 140 34 198 34" fill="none" stroke="#2456A6" stroke-width="2"/>
+              <path d="M70 40 C130 48 140 58 198 60" fill="none" stroke="#2456A6" stroke-width="2" stroke-dasharray="4 3"/>
+              <path d="M70 40 C130 60 140 82 198 86" fill="none" stroke="#2456A6" stroke-width="2" stroke-dasharray="2 4"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="concept">
+      <h2>Replacement policies</h2>
+      <p>When a set is full and a new block arrives, one resident block must go. The simulator implements all three classics:</p>
+      <ul class="pol-list">
+        <li><strong>LRU</strong> — evict the block untouched for the longest time. Best exploits temporal locality; needs usage tracking per line.</li>
+        <li><strong>FIFO</strong> — evict the block that was <em>loaded</em> earliest, regardless of how recently it was used. Simpler hardware, slightly worse hit rates.</li>
+        <li><strong>Random</strong> — pick any resident block. Surprisingly competitive, and immune to pathological access patterns.</li>
+      </ul>
+      <p style="margin-top:10px">Note that a direct-mapped cache has no choice to make — the incoming block’s one legal line is always the victim.</p>
+    </div>
+
+    <div class="concept">
+      <h2>Reading the misses</h2>
+      <p>The log labels each miss. A <strong>cold (compulsory) miss</strong> is the first-ever access to a block — unavoidable. Any later miss means the block was in the cache once and got evicted: either a <strong>conflict miss</strong> (another block mapped onto it) or a <strong>capacity miss</strong> (the working set simply doesn’t fit). Try the “Conflict thrash” demo under direct mapping, then re-run it 2-way — the misses vanish. That single comparison is the whole argument for associativity.</p>
+    </div>
+
+  </div>
+</section>
+
+<footer class="wrap">Figure 1-1, as it were. Built for ECE2002 revision — 8-bit addresses keep the arithmetic exam-sized. Byte-addressable memory, read accesses only.</footer>
+</main>
+
+<script>
+"use strict";
+/* ============ state ============ */
+const ADDR_BITS = 8, MEM = 256;
+let cfg = { size:64, block:8, ways:1, pol:"LRU" };
+let cache = [];          // sets -> ways -> {valid, tag, loadedAt, lastUsed, blockAddr}
+let clockN = 0;          // monotonic counter for LRU/FIFO
+let stats = { acc:0, hit:0, miss:0, cold:0, evict:0 };
+let seenBlocks = new Set();
+let logN = 0;
+let busy = false;
+
+const $ = id => document.getElementById(id);
+const log2 = n => Math.round(Math.log2(n));
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function geom(){
+  const lines = cfg.size / cfg.block;
+  const ways = cfg.ways === "full" ? lines : Math.min(cfg.ways, lines);
+  const sets = lines / ways;
+  const offB = log2(cfg.block), idxB = log2(sets), tagB = ADDR_BITS - offB - idxB;
+  return { lines, ways, sets, offB, idxB, tagB };
+}
+
+function resetCache(){
+  const g = geom();
+  cache = Array.from({length:g.sets}, () =>
+    Array.from({length:g.ways}, () => ({valid:0, tag:0, loadedAt:0, lastUsed:0, blockAddr:0})));
+  clockN = 0; stats = {acc:0,hit:0,miss:0,cold:0,evict:0}; seenBlocks.clear(); logN = 0;
+  $("log").innerHTML = '<li class="log-empty">No accesses yet.</li>';
+  $("resultBox").className = "result";
+  $("resultBox").textContent = "Cache cleared. Waiting for first access…";
+  $("decAddr").textContent = "—";
+  $("decMeaning").textContent = "Enter an address and press “Access address” to see it decoded.";
+  renderBits(null); renderLegend(null); renderTable(); renderStats(); renderDerived();
+}
+
+/* ============ rendering ============ */
+function renderDerived(){
+  const g = geom();
+  $("derived").innerHTML =
+    `lines&nbsp;&nbsp;= ${g.lines}<br>` +
+    `sets&nbsp;&nbsp;&nbsp;= ${g.sets} × ${g.ways}-way<br>` +
+    `offset = ${g.offB} bit${g.offB!==1?"s":""}<br>` +
+    `index&nbsp;&nbsp;= ${g.idxB} bit${g.idxB!==1?"s":""}<br>` +
+    `tag&nbsp;&nbsp;&nbsp;&nbsp;= ${g.tagB} bit${g.tagB!==1?"s":""}`;
+  $("tblMeta").textContent = `${cfg.size} B, ${cfg.block} B blocks, ${g.sets}×${g.ways}`;
+  $("cfgPol").disabled = (g.ways === 1);
+  renderFormula(g);
+}
+
+function renderBits(split){
+  const row = $("bitRow"); row.innerHTML = "";
+  const g = geom();
+  for (let i = ADDR_BITS-1; i >= 0; i--){
+    const d = document.createElement("div");
+    d.className = "bit";
+    if (split){
+      d.textContent = (split.addr >> i) & 1;
+      if (i >= g.offB + g.idxB) d.classList.add("tag");
+      else if (i >= g.offB) d.classList.add("idx");
+      else d.classList.add("off");
+    } else d.textContent = "·";
+    row.appendChild(d);
+  }
+}
+
+function renderLegend(split){
+  const g = geom(), L = $("legend");
+  if (!split){ L.innerHTML = ""; return; }
+  const seg = (css,name,bits,val) => bits > 0 ?
+    `<span class="chip"><span class="swatch" style="background:var(--${css}-c)"></span>${name} (${bits}b) = <span class="val">${val}</span></span>` : "";
+  L.innerHTML =
+    seg("tag","tag",g.tagB, split.tag) +
+    seg("idx","set index",g.idxB, split.set) +
+    seg("off","offset",g.offB, split.off);
+}
+
+function renderTable(hl){
+  const g = geom(), t = $("cacheTbl");
+  let h = `<thead><tr><th>Set</th><th>Way</th><th>V</th><th>Tag</th><th>Block (addresses)</th><th>${cfg.pol==="FIFO"?"Loaded":"Last used"}</th></tr></thead><tbody>`;
+  for (let s = 0; s < g.sets; s++){
+    for (let w = 0; w < g.ways; w++){
+      const L = cache[s][w];
+      let cls = "";
+      if (hl && hl.set === s){
+        cls = (hl.way === w) ? ` class="row-${hl.kind}"` : ` class="row-target"`;
+      }
+      h += `<tr${cls}>`;
+      if (w === 0) h += `<td class="setcell" rowspan="${g.ways}">${s}</td>`;
+      h += `<td class="mono-c">${w}</td>`;
+      h += `<td><span class="vbit ${L.valid?"v1":"v0"}">${L.valid}</span></td>`;
+      if (L.valid){
+        const lo = L.blockAddr, hi = L.blockAddr + cfg.block - 1;
+        h += `<td class="mono-c">${toBin(L.tag, g.tagB)} (0x${L.tag.toString(16).toUpperCase()})</td>`;
+        h += `<td class="mono-c">0x${hex(lo)} – 0x${hex(hi)}</td>`;
+        h += `<td class="mono-c">t=${cfg.pol==="FIFO"?L.loadedAt:L.lastUsed}</td>`;
+      } else {
+        h += `<td class="empty">—</td><td class="empty">empty</td><td class="empty">—</td>`;
+      }
+      h += "</tr>";
+    }
+  }
+  t.innerHTML = h + "</tbody>";
+}
+
+function renderStats(){
+  const rate = stats.acc ? (100*stats.hit/stats.acc).toFixed(1) : "0.0";
+  $("stats").innerHTML =
+    stat(stats.acc,"Accesses") +
+    stat(stats.hit,"Hits","hitc") +
+    stat(stats.miss,"Misses","missc") +
+    stat(rate+"%","Hit rate") +
+    stat(stats.cold,"Cold misses") +
+    stat(stats.evict,"Evictions");
+}
+const stat = (n,l,c="") => `<div class="stat ${c}"><div class="num">${n}</div><div class="lbl">${l}</div></div>`;
+
+function renderFormula(g){
+  $("formulaBox").innerHTML =
+    `offset bits = log₂(block size)&nbsp;&nbsp;&nbsp;= log₂(${cfg.block})&nbsp;= <b>${g.offB}</b><br>` +
+    `index bits&nbsp; = log₂(number of sets) = log₂(${g.sets})&nbsp;= <b>${g.idxB}</b><br>` +
+    `tag bits&nbsp;&nbsp;&nbsp; = address − index − offset = ${ADDR_BITS} − ${g.idxB} − ${g.offB} = <b>${g.tagB}</b>`;
+  $("formulaWorked").innerHTML =
+    `With the current configuration (${cfg.size} B cache, ${cfg.block} B blocks, ${g.sets} set${g.sets!==1?"s":""} × ${g.ways} way${g.ways!==1?"s":""}), an 8-bit address splits as <span class="k-tag">${g.tagB}-bit tag</span> | <span class="k-idx">${g.idxB}-bit index</span> | <span class="k-off">${g.offB}-bit offset</span>. Switch the configuration in the Simulator tab and this updates.`;
+}
+
+function logEntry(split, res){
+  if (logN === 0) $("log").innerHTML = "";
+  logN++;
+  const g = geom();
+  const b = toBin(split.addr, ADDR_BITS);
+  const segHtml =
+    `<span class="t">${b.slice(0, g.tagB)}</span>` +
+    (g.idxB ? `<span class="i">${b.slice(g.tagB, g.tagB+g.idxB)}</span>` : "") +
+    `<span class="o">${b.slice(g.tagB+g.idxB)}</span>`;
+  const li = document.createElement("li");
+  li.innerHTML =
+    `<span class="n">${logN}</span>` +
+    `<span class="a">0x${hex(split.addr)}</span>` +
+    `<span class="seg">${segHtml}</span>` +
+    `<span>set ${split.set}</span>` +
+    `<span class="res ${res.hit?"h":"m"}">${res.hit?"HIT":"MISS"+(res.cold?" (cold)":"")}</span>` +
+    (res.evicted !== null ? `<span class="ev">evicted tag ${toBin(res.evicted, g.tagB)} from way ${res.way}</span>` : "");
+  $("log").prepend(li);
+}
+
+const hex = n => n.toString(16).toUpperCase().padStart(2,"0");
+const toBin = (n,w) => w > 0 ? n.toString(2).padStart(w,"0") : "";
+const sleep = ms => new Promise(r => setTimeout(r, reduced ? 0 : ms));
+const speed = () => 1320 - Number($("speedIn").value);
+
+/* ============ cache logic ============ */
+function split(addr){
+  const g = geom();
+  const off = addr & (cfg.block - 1);
+  const blockAddr = addr - off;
+  const blockNo = addr >> g.offB;
+  const set = g.idxB ? (blockNo & ((1 << g.idxB) - 1)) : 0;
+  const tag = blockNo >> g.idxB;
+  return { addr, off, set, tag, blockAddr };
+}
+
+function lookup(sp){
+  const set = cache[sp.set];
+  for (let w = 0; w < set.length; w++)
+    if (set[w].valid && set[w].tag === sp.tag) return w;
+  return -1;
+}
+
+function pickVictim(sp){
+  const set = cache[sp.set];
+  for (let w = 0; w < set.length; w++) if (!set[w].valid) return {way:w, evict:false};
+  if (set.length === 1) return {way:0, evict:true};
+  let w = 0;
+  if (cfg.pol === "RAND") w = Math.floor(Math.random()*set.length);
+  else {
+    const key = cfg.pol === "FIFO" ? "loadedAt" : "lastUsed";
+    for (let i = 1; i < set.length; i++) if (set[i][key] < set[w][key]) w = i;
+  }
+  return {way:w, evict:true};
+}
+
+/* ============ animated access ============ */
+async function access(addr, fast){
+  const g = geom();
+  const sp = split(addr);
+  clockN++;
+
+  // 1. decode
+  $("decAddr").textContent = `0x${hex(addr)} (${addr})`;
+  $("decMeaning").textContent = g.idxB
+    ? `tag ${sp.tag}, set ${sp.set}, byte offset ${sp.off}`
+    : `tag ${sp.tag}, byte offset ${sp.off} (fully associative — no index)`;
+  renderBits(sp); renderLegend(sp);
+  const rb = $("resultBox");
+  rb.className = "result"; rb.textContent = `Searching set ${sp.set} for tag ${toBin(sp.tag,g.tagB)}…`;
+  renderTable({set:sp.set, way:-1, kind:"target"});
+  if (!fast) await sleep(speed());
+
+  // 2. lookup
+  const hitWay = lookup(sp);
+  stats.acc++;
+  let res;
+  if (hitWay >= 0){
+    stats.hit++;
+    cache[sp.set][hitWay].lastUsed = clockN;
+    res = {hit:true, cold:false, evicted:null, way:hitWay};
+    rb.className = "result hit";
+    rb.innerHTML = `HIT — tag match in set ${sp.set}, way ${hitWay}.<span class="sub">Byte served from offset ${sp.off} of the cached block. No memory access needed.</span>`;
+    renderTable({set:sp.set, way:hitWay, kind:"hit"});
+  } else {
+    stats.miss++;
+    const cold = !seenBlocks.has(sp.blockAddr);
+    if (cold) stats.cold++;
+    seenBlocks.add(sp.blockAddr);
+    const v = pickVictim(sp);
+    const victimTag = v.evict ? cache[sp.set][v.way].tag : null;
+    if (v.evict) stats.evict++;
+    rb.className = "result miss";
+    rb.innerHTML = `MISS${cold ? " (cold)" : ""} — no valid line in set ${sp.set} holds tag ${toBin(sp.tag,g.tagB)}.<span class="sub">${
+      v.evict
+        ? `Set full: ${g.ways===1 ? "direct mapping forces" : cfg.pol + " picks"} way ${v.way} as victim (tag ${toBin(victimTag,g.tagB)} evicted), then block 0x${hex(sp.blockAddr)}–0x${hex(sp.blockAddr+cfg.block-1)} is fetched from memory.`
+        : `Way ${v.way} is empty, so block 0x${hex(sp.blockAddr)}–0x${hex(sp.blockAddr+cfg.block-1)} is fetched from memory into it.`
+    }</span>`;
+    renderTable({set:sp.set, way:v.way, kind:"miss"});
+    if (!fast) await sleep(speed());
+    // 3. fill
+    cache[sp.set][v.way] = {valid:1, tag:sp.tag, loadedAt:clockN, lastUsed:clockN, blockAddr:sp.blockAddr};
+    renderTable({set:sp.set, way:v.way, kind:"fill"});
+    res = {hit:false, cold, evicted:victimTag, way:v.way};
+  }
+  renderStats();
+  logEntry(sp, res);
+  if (!fast) await sleep(speed()*0.6);
+  renderTable();
+}
+
+/* ============ presets ============ */
+function presetAddrs(kind){
+  const g = geom();
+  if (kind === "seq"){
+    const a = []; for (let i = 0; i < cfg.block*3; i += 2) a.push(i);
+    return a; // walks 3 consecutive blocks 2 bytes at a time
+  }
+  if (kind === "loop"){
+    const base = [0x10, 0x24, 0x38, 0x4C];
+    return base.concat(base); // second pass should hit (if capacity allows)
+  }
+  // thrash: two addresses with same index, different tags
+  const strideBlocks = g.sets;                 // same set, tag differs
+  const A = 0, B = (strideBlocks * cfg.block) % MEM || cfg.block;
+  return [A,B,A,B,A,B];
+}
+
+async function runPreset(kind){
+  if (!kind || busy) return;
+  setBusy(true);
+  try{
+    for (const a of presetAddrs(kind)){
+      $("addrIn").value = $("addrBase").value === "16" ? "0x"+hex(a) : String(a);
+      await access(a, false);
+      await sleep(speed()*0.4);
+    }
+  } finally { setBusy(false); }
+}
+
+/* ============ ui wiring ============ */
+function setBusy(b){
+  busy = b;
+  ["btnAccess","btnRandom","btnRunPreset","btnReset","cfgSize","cfgBlock","cfgMap","cfgPol"]
+    .forEach(id => $(id).disabled = b);
+  if (!b) $("cfgPol").disabled = (geom().ways === 1);
+}
+
+function parseAddr(){
+  const raw = $("addrIn").value.trim().replace(/^0x/i,"");
+  const base = Number($("addrBase").value);
+  const n = parseInt(raw, base);
+  if (!Number.isInteger(n) || n < 0 || n >= MEM){
+    const rb = $("resultBox");
+    rb.className = "result miss";
+    rb.textContent = `“${$("addrIn").value.trim()}” isn’t a valid address. Use ${base===16?"hex":"decimal"} in the range 0–255 (0x00–0xFF).`;
+    return null;
+  }
+  return n;
+}
+
+async function onAccess(){
+  if (busy) return;
+  const a = parseAddr(); if (a === null) return;
+  setBusy(true);
+  try { await access(a, false); } finally { setBusy(false); }
+}
+
+$("btnAccess").addEventListener("click", onAccess);
+$("addrIn").addEventListener("keydown", e => { if (e.key === "Enter") onAccess(); });
+$("btnRandom").addEventListener("click", async () => {
+  if (busy) return;
+  const a = Math.floor(Math.random()*MEM);
+  $("addrIn").value = $("addrBase").value === "16" ? "0x"+hex(a) : String(a);
+  setBusy(true);
+  try { await access(a, false); } finally { setBusy(false); }
+});
+$("btnRunPreset").addEventListener("click", () => runPreset($("presetSel").value));
+$("btnReset").addEventListener("click", resetCache);
+$("addrBase").addEventListener("change", () => {
+  const raw = $("addrIn").value.trim().replace(/^0x/i,"");
+  const from = Number($("addrBase").value) === 16 ? 10 : 16;
+  const n = parseInt(raw, from);
+  if (Number.isInteger(n) && n >= 0 && n < MEM)
+    $("addrIn").value = Number($("addrBase").value) === 16 ? "0x"+hex(n) : String(n);
+});
+["cfgSize","cfgBlock","cfgMap"].forEach(id => $(id).addEventListener("change", () => {
+  cfg.size = Number($("cfgSize").value);
+  cfg.block = Number($("cfgBlock").value);
+  cfg.ways = $("cfgMap").value === "full" ? "full" : Number($("cfgMap").value);
+  resetCache();
+}));
+$("cfgPol").addEventListener("change", () => { cfg.pol = $("cfgPol").value; renderTable(); });
+
+/* tabs */
+function showTab(sim){
+  $("tabSim").setAttribute("aria-selected", sim);
+  $("tabCon").setAttribute("aria-selected", !sim);
+  $("viewSim").hidden = !sim;
+  $("viewCon").hidden = sim;
+}
+$("tabSim").addEventListener("click", () => showTab(true));
+$("tabCon").addEventListener("click", () => showTab(false));
+
+/* theme toggle */
+$("themeBtn").addEventListener("click", () => {
+  const r = document.documentElement;
+  const sysDark = matchMedia("(prefers-color-scheme: dark)").matches;
+  const cur = r.dataset.theme || (sysDark ? "dark" : "light");
+  r.dataset.theme = cur === "dark" ? "light" : "dark";
+});
+
+/* boot */
+resetCache();
+</script>
+</body>
+</html>
